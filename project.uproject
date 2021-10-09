@@ -2,5 +2,12 @@
 	"FileVersion": 3,
 	"EngineAssociation": "4.27",
 	"Category": "",
-	"Description": ""
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "project",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
 }
