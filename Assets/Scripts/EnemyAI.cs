@@ -252,4 +252,11 @@ public class EnemyAI : MonoBehaviour
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position + transform.forward * attackRange, attackSize);
     }
+    public void Trap(bool value)
+    {
+        this.enabled = value;
+        navMeshAgent.enabled = value;
+        //TODO:
+        //Add animator boolean condition to play a trapped/angry animation or something.
+    }
 }
