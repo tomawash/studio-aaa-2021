@@ -51,7 +51,8 @@ public class GhostGlimpseTriggerSight : GhostGlimpseTrigger
         Vector3 triggerToCam= playerView.WorldToViewportPoint(triggerPoint.position);
         Vector3 spawnToCam = playerView.WorldToViewportPoint(spawnPoint.position);
         Vector3 endToCam = playerView.WorldToViewportPoint(endPoint.position);
-        if (InSight(triggerToCam, obstructedTrigger) && !InSight(spawnToCam, obstructedSpawn) && !InSight(endToCam, obstructedEnd))
+        canTrigger = InSight(triggerToCam, obstructedTrigger) && !InSight(spawnToCam, obstructedSpawn) && !InSight(endToCam, obstructedEnd);
+        if (canTrigger)
         {
             triggerDelay -= Time.deltaTime;
         }

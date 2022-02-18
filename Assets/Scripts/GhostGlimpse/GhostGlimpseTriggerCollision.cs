@@ -17,10 +17,11 @@ public class GhostGlimpseTriggerCollision : GhostGlimpseTrigger
     void Update()
     {
         spawnColDwn -= Time.deltaTime;
+        canTrigger = true; // For consistency
     }
     private void OnTriggerEnter(Collider other)
     {
-        if(spawnColDwn < 0)
+        if (spawnColDwn < 0 && canTrigger)
         {
             SpawnGlimpse();
             spawnColDwn = spawnColDwnBase;
