@@ -9,7 +9,7 @@ public class EnemyAI : MonoBehaviour
     [SerializeField]
     private GameObject player;
     [SerializeField]
-    private LayerMask groundLayer, playerLayer, waypointLayer;
+    private LayerMask terrainPlayerLayer, playerLayer, waypointLayer;
 
     //Patrol pathing and idle state
     [SerializeField]
@@ -73,13 +73,11 @@ public class EnemyAI : MonoBehaviour
 
     //Seeing Variables
     [SerializeField]
-    private float sightRangeBase;
     private float sightRange;
     private Vector3 lastSeen;
 
     //Collision checks
     private bool playerInSightRange;
-    private bool terrainInRange;
     private bool playerInRange;
     private bool hitPlayer;
     private Vector3 toPlayer;
@@ -100,8 +98,6 @@ public class EnemyAI : MonoBehaviour
 
         rotationSpd = navMeshAgent.angularSpeed;
 
-        sightRange = sightRangeBase;
-
         //Setting timers
         idleWait = idleWaitBase;
 
@@ -114,10 +110,14 @@ public class EnemyAI : MonoBehaviour
     private void FixedUpdate()
     {
         //Checks
-        playerInSightRange = Physics.Raycast(transform.position, toPlayer, sightRange, playerLayer);
-        terrainInRange = Physics.Raycast(transform.position, toPlayer, sightRange, groundLayer);
+        RaycastHit seePlayer;
+        Ray lookForPlayer = new Ray(transform.position, toPlayer);
+        Physics.Raycast(lookForPlayer, out seePlayer, terrainPlayerLayer);
+        if (seePlayer.transform != null)
+        {
+            playerInSightRange = (seePlayer.distance < sightRange && seePlayer.transform.gameObject.name == player.transform.GetChild(1).name);
+        }
         playerInRange = Physics.Raycast(transform.position, toPlayer, attackRange, playerLayer);
-        //playerInRange = Physics.CheckSphere(transform.position + transform.forward * attackRange, attackSize / 4, playerLayer);
         hitPlayer = Physics.CheckSphere(transform.position + transform.forward * attackRange, attackSize, playerLayer);
     }
 
@@ -126,14 +126,6 @@ public class EnemyAI : MonoBehaviour
     {
         //Calculating sight range
         toPlayer = player.transform.position - transform.position;
-        if (toPlayer.magnitude < sightRange)
-        {
-            sightRange = toPlayer.magnitude;
-        }
-        else
-        {
-            sightRange = sightRangeBase;
-        }
 
         //Recuding attack cooldown
         attackCD -= Time.deltaTime;
@@ -178,7 +170,7 @@ public class EnemyAI : MonoBehaviour
                 }
 
                 //Player in range chase
-                if (playerInSightRange && !terrainInRange)
+                if (playerInSightRange)
                 {
                     currentIdleState = BasicEnemyIdleStates.STILL;
                     currentAIState = BasicEnemyAIStates.CHASE;
@@ -192,25 +184,15 @@ public class EnemyAI : MonoBehaviour
                 }
                 break;
             case BasicEnemyAIStates.CHASE:
-                if (playerInSightRange)
+
+                if(playerInRange)
                 {
-                    if (terrainInRange)
-                    {
-                        //Travelling to last seen location
-                        if (navMeshAgent.pathStatus == NavMeshPathStatus.PathComplete)
-                        {
-                            currentAIState = BasicEnemyAIStates.IDLE;
-                        }
-                    }
-                    else
-                    {
-                        //AI Setting and remembering last seen
-                        lastSeen = player.transform.position;
-                    }
+                    //AI Setting and remembering last seen
+                    lastSeen = player.transform.position;
                 }
                 else
                 {
-                    //Traveling to last seen location
+                    //Travelling to last seen location
                     if (navMeshAgent.pathStatus == NavMeshPathStatus.PathComplete)
                     {
                         currentAIState = BasicEnemyAIStates.IDLE;
@@ -291,50 +273,14 @@ public class EnemyAI : MonoBehaviour
                 }
                 break;
         }
-
-
-        //Old AI, need to use waypoint/patroling stuff
-
-        //if (playerInRange && !terrainInRange)
-        //{
-        //    Debug.Log("chasing");
-        //    foundPlayer = true;
-        //    lastSeen = player.transform;
-        //    navMeshAgent.SetDestination(player.transform.position);
-        //}
-        //else if(foundPlayer)
-        //{
-        //    navMeshAgent.SetDestination(transform.position);
-        //}
-        //else if (patrolPath != null ){
-        //    Transform currentPoint = patrolPath.GetChild(patrolIndex);
-        //    navMeshAgent.SetDestination(currentPoint.position);
-        //    Collider[] waypointContacts = Physics.OverlapSphere(transform.position, 0.5f, waypointLayer);
-
-        //    Debug.Log(patrolIndex);
-
-        //    for (int i = 0; i < waypointContacts.Length; i++)
-        //    {
-        //        Debug.Log(waypointContacts[i].name + " : " + currentPoint.name);
-        //        if (waypointContacts[i].name == currentPoint.name)
-        //        {
-        //            patrolIndex++;
-        //            if(patrolIndex > patrolPath.childCount-1)
-        //            {
-        //                patrolIndex = 0;
-        //            }
-        //        }
-        //    }
-        //}
     }
 
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.white;
-        Gizmos.DrawWireSphere(transform.position, sightRange);
         Gizmos.DrawRay(new Ray(transform.position, (player.transform.position - transform.position)));
         Gizmos.color = Color.grey;
-        Gizmos.DrawWireSphere(transform.position, sightRangeBase);
+        Gizmos.DrawWireSphere(transform.position, sightRange);
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(lastSeen, 1f);
         Gizmos.color = Color.red;
