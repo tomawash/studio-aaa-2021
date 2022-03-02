@@ -11,16 +11,22 @@ public class EnemyAI : MonoBehaviour
     [SerializeField]
     private LayerMask groundLayer, playerLayer, waypointLayer;
 
-    //Patrol pathing
+    //Patrol pathing and idle state
     [SerializeField]
     private Transform patrolPath;
+    private Transform currentPoint;
     private int patrolIndex = 0;
 
-    //State Machine
+    [SerializeField]
+    private float idleWaitBase = 10f;
+    private float idleWait;
+
+    //State Machines
     enum BasicEnemyAIStates
     {
         IDLE,
         CHASE,
+        SEARCH,
         ATTACK
     }
     enum BasicEnemyAttackStates
@@ -30,9 +36,21 @@ public class EnemyAI : MonoBehaviour
         ATTACK,
         RECOVERY
     }
+    enum BasicEnemyIdleStates
+    {
+        STILL,
+        WAYPOINT
+    }
+    enum BasicEnemySearchStates
+    {
+        LOOK,
+        SEARCHPOINT
+    }
 
     private BasicEnemyAIStates currentAIState;
     private BasicEnemyAttackStates currentAttackState;
+    private BasicEnemyIdleStates currentIdleState;
+    private BasicEnemySearchStates currentSearchState;
 
     //Attack
     [SerializeField]
@@ -77,10 +95,16 @@ public class EnemyAI : MonoBehaviour
         //Initalization
         currentAIState = BasicEnemyAIStates.IDLE;
         currentAttackState = BasicEnemyAttackStates.COOLDOWN;
+        currentIdleState = BasicEnemyIdleStates.STILL;
+        currentSearchState = BasicEnemySearchStates.LOOK;
 
         rotationSpd = navMeshAgent.angularSpeed;
 
         sightRange = sightRangeBase;
+
+        //Setting timers
+        idleWait = idleWaitBase;
+
         attackCD = 0f;
         attackStartup = attackStartupBase;
         attackDuration = attackDurationBase;
@@ -117,10 +141,52 @@ public class EnemyAI : MonoBehaviour
         switch (currentAIState)
         {
             case BasicEnemyAIStates.IDLE:
-                //Player in ranage chase
-                if(playerInSightRange && !terrainInRange)
+                switch (currentIdleState) {
+                    case BasicEnemyIdleStates.STILL:
+                        //Standing still
+                        idleWait -= Time.deltaTime;
+                        if (idleWait <= 0f)
+                        {
+                            if (patrolPath != null)
+                            {
+                                currentIdleState = BasicEnemyIdleStates.WAYPOINT;
+                                currentPoint = patrolPath.GetChild(patrolIndex);
+                                navMeshAgent.SetDestination(currentPoint.position);
+                            }
+                            idleWait = idleWaitBase;
+                        }
+                        break;
+                    case BasicEnemyIdleStates.WAYPOINT:
+                        Collider[] waypointContacts = Physics.OverlapSphere(transform.position, 0.5f, waypointLayer);
+
+                        for (int i = 0; i < waypointContacts.Length; i++)
+                        {
+                            if (waypointContacts[i].name == currentPoint.name)
+                            {
+                                //Setting new patrol index
+                                patrolIndex++;
+                                if (patrolIndex > patrolPath.childCount - 1)
+                                {
+                                    patrolIndex = 0;
+                                }
+
+                                //Changing states
+                                currentIdleState = BasicEnemyIdleStates.STILL;
+                            }
+                        }
+                        break;
+                }
+
+                //Player in range chase
+                if (playerInSightRange && !terrainInRange)
                 {
+                    currentIdleState = BasicEnemyIdleStates.STILL;
                     currentAIState = BasicEnemyAIStates.CHASE;
+
+                    //Resetting current state
+                    idleWait = idleWaitBase;
+
+                    //Setting up next state
                     lastSeen = player.transform.position;
                     navMeshAgent.SetDestination(lastSeen);
                 }
