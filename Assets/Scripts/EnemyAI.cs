@@ -71,6 +71,16 @@ public class EnemyAI : MonoBehaviour
     [SerializeField]
     private float attackSize;
 
+    //Searching variables
+    [SerializeField]
+    private float lookingDurBase;
+    private float lookingDur;
+    private int searchPointIndex = -1;
+
+    [SerializeField]
+    private float searchDistance;
+    private List<Vector3> searchPoints = new List<Vector3>();
+
     //Seeing Variables
     [SerializeField]
     private float sightRange;
@@ -97,9 +107,9 @@ public class EnemyAI : MonoBehaviour
         currentSearchState = BasicEnemySearchStates.LOOK;
 
         rotationSpd = navMeshAgent.angularSpeed;
-
         //Setting timers
         idleWait = idleWaitBase;
+        lookingDur = lookingDurBase;
 
         attackCD = 0f;
         attackStartup = attackStartupBase;
@@ -185,26 +195,139 @@ public class EnemyAI : MonoBehaviour
                 break;
             case BasicEnemyAIStates.CHASE:
 
-                if(playerInRange)
+                if (playerInSightRange)
                 {
                     //AI Setting and remembering last seen
                     lastSeen = player.transform.position;
+                    navMeshAgent.SetDestination(lastSeen);
                 }
                 else
                 {
                     //Travelling to last seen location
-                    if (navMeshAgent.pathStatus == NavMeshPathStatus.PathComplete)
+                    if (Vector3.Distance(transform.position, lastSeen) < 0.5f)
                     {
-                        currentAIState = BasicEnemyAIStates.IDLE;
+                        Vector3 lastSeenToPlayer = (player.transform.position - lastSeen).normalized * searchDistance;
+                        bool positiveFound = false;
+                        bool negativeFound = false;
+
+                        Vector3 checkAngle;
+                        float checkX;
+                        float checkZ;
+                        float angleCheck;
+                        NavMeshPath newPath = new NavMeshPath();
+
+                        //Finding searchpoints starting from tangent line of toPlayer
+                        for (int i = 90; i >= 0; i--)
+                        {
+                            angleCheck = i * (Mathf.PI / 180f);
+
+                            if (!positiveFound)
+                            {
+                                //Constructing new angle
+                                checkX = lastSeenToPlayer.x * Mathf.Cos(angleCheck) - lastSeenToPlayer.z * Mathf.Sin(angleCheck);
+                                checkZ = lastSeenToPlayer.x * Mathf.Sin(angleCheck) + lastSeenToPlayer.z * Mathf.Cos(angleCheck);
+                                checkAngle = new Vector3(checkX, lastSeenToPlayer.y, checkZ);
+                                Debug.DrawRay(lastSeen, checkAngle, Color.green, 15f);
+
+                                //Checking for valid complete paths
+                                NavMesh.CalculatePath(transform.position, transform.position + checkAngle, navMeshAgent.areaMask, newPath);
+                                if (newPath.status == NavMeshPathStatus.PathComplete)
+                                {
+                                    searchPoints.Add(transform.position + checkAngle);
+                                    positiveFound = true;
+                                }
+                            }
+
+                            if (!negativeFound)
+                            {
+                                //Constructing new angle
+                                checkX = lastSeenToPlayer.x * Mathf.Cos(-angleCheck) - lastSeenToPlayer.z * Mathf.Sin(-angleCheck);
+                                checkZ = lastSeenToPlayer.x * Mathf.Sin(-angleCheck) + lastSeenToPlayer.z * Mathf.Cos(-angleCheck);
+                                checkAngle = new Vector3(checkX, lastSeenToPlayer.y, checkZ);
+                                Debug.DrawRay(lastSeen, checkAngle, Color.red, 15f);
+
+                                //Checking for valid complete paths
+                                NavMesh.CalculatePath(transform.position, transform.position + checkAngle, navMeshAgent.areaMask, newPath);
+                                if (newPath.status == NavMeshPathStatus.PathComplete)
+                                {
+                                    searchPoints.Add(transform.position + checkAngle);
+                                    negativeFound = true;
+                                }
+                            }
+                        }
+
+                        //If there are no valid search points return to idle
+                        if (!positiveFound && !negativeFound)
+                        {
+                            currentAIState = BasicEnemyAIStates.IDLE;
+                        }
+                        else
+                        {
+                            currentAIState = BasicEnemyAIStates.SEARCH;
+                        }
                     }
                 }
-                
+
                 //Attacking if in range
                 if (playerInRange)
                 {
                     currentAIState = BasicEnemyAIStates.ATTACK;
                     navMeshAgent.SetDestination(transform.position);
                     navMeshAgent.updateRotation = false;
+                }
+                break;
+            case BasicEnemyAIStates.SEARCH:
+
+                //Returning to idle when in range
+                if (playerInSightRange)
+                {
+                    lookingDur = lookingDurBase;
+                    searchPointIndex = -1;
+                    currentAIState = BasicEnemyAIStates.IDLE;
+                }
+                switch (currentSearchState) {
+                    case BasicEnemySearchStates.LOOK:
+                        lookingDur -= Time.deltaTime;
+
+                        //Rotating to simulate looking
+                        if (lookingDur > lookingDurBase*(1.0f/2.0f))
+                        {
+                            Vector3 rotation = new Vector3(0f, -rotationSpd/2 * Time.deltaTime, 0f);
+                            transform.Rotate(rotation);
+                        }
+                        else
+                        {
+                            Vector3 rotation = new Vector3(0f, rotationSpd/2 * Time.deltaTime, 0f);
+                            transform.Rotate(rotation);
+                        }
+
+                        //Changing based on available search points
+                        if (lookingDur <= 0f)
+                        {
+                            searchPointIndex++;
+                            if (searchPointIndex > searchPoints.Count-1)
+                            {
+                                searchPointIndex = -1;
+                                currentAIState = BasicEnemyAIStates.IDLE;
+                            }
+                            else
+                            {
+                                navMeshAgent.SetDestination(searchPoints[searchPointIndex]);
+                                currentSearchState = BasicEnemySearchStates.SEARCHPOINT;
+                            }
+                            lookingDur = lookingDurBase;
+                        }
+
+                        break;
+
+                    case BasicEnemySearchStates.SEARCHPOINT:
+                        
+                        if(Vector3.Distance(transform.position, searchPoints[searchPointIndex]) < 0.5f)
+                        {
+                            currentSearchState = BasicEnemySearchStates.LOOK;
+                        }
+
+                        break;
                 }
                 break;
             case BasicEnemyAIStates.ATTACK:
