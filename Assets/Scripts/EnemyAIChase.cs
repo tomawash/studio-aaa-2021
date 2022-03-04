@@ -3,23 +3,17 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class EnemyAI : MonoBehaviour
+public class EnemyAIChase : MonoBehaviour
 {
     private NavMeshAgent navMeshAgent;
     [SerializeField]
     private GameObject player;
     [SerializeField]
-    private LayerMask groundLayer, playerLayer, waypointLayer;
-
-    //Patrol pathing
-    [SerializeField]
-    private Transform patrolPath;
-    private int patrolIndex = 0;
+    private LayerMask playerLayer;
 
     //State Machine
     enum BasicEnemyAIStates
     {
-        IDLE,
         CHASE,
         ATTACK
     }
@@ -53,20 +47,12 @@ public class EnemyAI : MonoBehaviour
     [SerializeField]
     private float attackSize;
 
-    //Seeing Variables
-    [SerializeField]
-    private float sightRangeBase;
-    private float sightRange;
-    private Vector3 lastSeen;
 
     //Collision checks
-    private bool playerInSightRange;
-    private bool terrainInRange;
-    private bool playerInRange;
     private bool hitPlayer;
+    private bool playerInRange;
     private Vector3 toPlayer;
 
-    //Rotation
     private float rotationSpd;
 
     // Start is called before the first frame update
@@ -75,12 +61,13 @@ public class EnemyAI : MonoBehaviour
         navMeshAgent = GetComponent<NavMeshAgent>();
 
         //Initalization
-        currentAIState = BasicEnemyAIStates.IDLE;
+        currentAIState = BasicEnemyAIStates.CHASE;
+        navMeshAgent.SetDestination(player.transform.position);
         currentAttackState = BasicEnemyAttackStates.COOLDOWN;
 
         rotationSpd = navMeshAgent.angularSpeed;
 
-        sightRange = sightRangeBase;
+        //Attack timers
         attackCD = 0f;
         attackStartup = attackStartupBase;
         attackDuration = attackDurationBase;
@@ -89,74 +76,32 @@ public class EnemyAI : MonoBehaviour
 
     private void FixedUpdate()
     {
+        toPlayer = player.transform.position - transform.position;
         //Checks
-        playerInSightRange = Physics.Raycast(transform.position, toPlayer, sightRange, playerLayer);
-        terrainInRange = Physics.Raycast(transform.position, toPlayer, sightRange, groundLayer);
         playerInRange = Physics.Raycast(transform.position, toPlayer, attackRange, playerLayer);
-        //playerInRange = Physics.CheckSphere(transform.position + transform.forward * attackRange, attackSize / 4, playerLayer);
         hitPlayer = Physics.CheckSphere(transform.position + transform.forward * attackRange, attackSize, playerLayer);
     }
+
+
 
     // Update is called once per frame
     void Update()
     {
-        //Calculating sight range
-        toPlayer = player.transform.position - transform.position;
-        if (toPlayer.magnitude < sightRange)
-        {
-            sightRange = toPlayer.magnitude;
-        }
-        else
-        {
-            sightRange = sightRangeBase;
-        }
-
         //Recuding attack cooldown
         attackCD -= Time.deltaTime;
         //Statemachine
         switch (currentAIState)
         {
-            case BasicEnemyAIStates.IDLE:
-                //Player in ranage chase
-                if(playerInSightRange && !terrainInRange)
-                {
-                    currentAIState = BasicEnemyAIStates.CHASE;
-                    lastSeen = player.transform.position;
-                    navMeshAgent.SetDestination(lastSeen);
-                }
-                break;
             case BasicEnemyAIStates.CHASE:
-                if (playerInSightRange)
-                {
-                    if (terrainInRange)
-                    {
-                        //Travelling to last seen location
-                        if (navMeshAgent.pathStatus == NavMeshPathStatus.PathComplete)
-                        {
-                            currentAIState = BasicEnemyAIStates.IDLE;
-                        }
-                    }
-                    else
-                    {
-                        //AI Setting and remembering last seen
-                        lastSeen = player.transform.position;
-                    }
-                }
-                else
-                {
-                    //Traveling to last seen location
-                    if (navMeshAgent.pathStatus == NavMeshPathStatus.PathComplete)
-                    {
-                        currentAIState = BasicEnemyAIStates.IDLE;
-                    }
-                }
-                
+
+                //Chasing player
+                navMeshAgent.SetDestination(player.transform.position);
+
                 //Attacking if in range
                 if (playerInRange)
                 {
                     currentAIState = BasicEnemyAIStates.ATTACK;
                     navMeshAgent.SetDestination(transform.position);
-                    navMeshAgent.updateRotation = false;
                 }
                 break;
             case BasicEnemyAIStates.ATTACK:
@@ -166,13 +111,11 @@ public class EnemyAI : MonoBehaviour
                     case BasicEnemyAttackStates.COOLDOWN:
 
                         //Chaning state to chasing when out of range
-                        if(!playerInRange)
+                        if (!playerInRange)
                         {
                             currentAIState = BasicEnemyAIStates.CHASE;
-                            lastSeen = player.transform.position;
-                            navMeshAgent.SetDestination(lastSeen);
-                            navMeshAgent.updateRotation = true;
                         }
+
 
                         if (!hitPlayer)
                         {
@@ -185,13 +128,11 @@ public class EnemyAI : MonoBehaviour
                             Vector3 rotation = new Vector3(0f, (rotationSpd * Mathf.Sign(angleDifference)) * Time.deltaTime, 0f);
                             transform.Rotate(rotation);
                         }
-                        else
+
+                        if (attackCD < 0f)
                         {
-                            if (attackCD < 0f)
-                            {
-                                currentAttackState = BasicEnemyAttackStates.STARTUP;
-                                attackCD = attackCDBase;
-                            }
+                            currentAttackState = BasicEnemyAttackStates.STARTUP;
+                            attackCD = attackCDBase;
                         }
                         break;
                     case BasicEnemyAttackStates.STARTUP:
@@ -226,52 +167,13 @@ public class EnemyAI : MonoBehaviour
                 break;
         }
 
-
-        //Old AI, need to use waypoint/patroling stuff
-
-        //if (playerInRange && !terrainInRange)
-        //{
-        //    Debug.Log("chasing");
-        //    foundPlayer = true;
-        //    lastSeen = player.transform;
-        //    navMeshAgent.SetDestination(player.transform.position);
-        //}
-        //else if(foundPlayer)
-        //{
-        //    navMeshAgent.SetDestination(transform.position);
-        //}
-        //else if (patrolPath != null ){
-        //    Transform currentPoint = patrolPath.GetChild(patrolIndex);
-        //    navMeshAgent.SetDestination(currentPoint.position);
-        //    Collider[] waypointContacts = Physics.OverlapSphere(transform.position, 0.5f, waypointLayer);
-
-        //    Debug.Log(patrolIndex);
-
-        //    for (int i = 0; i < waypointContacts.Length; i++)
-        //    {
-        //        Debug.Log(waypointContacts[i].name + " : " + currentPoint.name);
-        //        if (waypointContacts[i].name == currentPoint.name)
-        //        {
-        //            patrolIndex++;
-        //            if(patrolIndex > patrolPath.childCount-1)
-        //            {
-        //                patrolIndex = 0;
-        //            }
-        //        }
-        //    }
-        //}
     }
 
     private void OnDrawGizmos()
     {
-        Gizmos.color = Color.white;
-        Gizmos.DrawWireSphere(transform.position, sightRange);
-        Gizmos.DrawRay(new Ray(transform.position, (player.transform.position - transform.position)));
-        Gizmos.color = Color.grey;
-        Gizmos.DrawWireSphere(transform.position, sightRangeBase);
-        Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(lastSeen, 1f);
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position + transform.forward * attackRange, attackSize);
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawWireSphere(transform.position + transform.forward * attackRange, attackSize / 4);
     }
 }
