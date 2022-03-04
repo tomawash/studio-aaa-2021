@@ -15,8 +15,7 @@ public class GhostGlimpse : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Vector3 toDestination = navMeshAgent.destination - transform.position;
-        if(toDestination.magnitude < 1.1f)
+        if(navMeshAgent.remainingDistance < 1.1f)
         {
             Destroy(gameObject);
         }

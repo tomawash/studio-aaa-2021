@@ -18,23 +18,12 @@ public class GhostGlimpseTrigger : MonoBehaviour
 
     [SerializeField]
     protected bool oneUse = true;
-    public bool used = false;
+    public bool used = true;
     public bool canTrigger = false;
 
     [SerializeField]
     protected float glimpseSpeed = 100f;
 
-    // Start is called before the first frame update
-    void Start()
-    {
-
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
     protected GameObject SpawnGlimpse()
     {
         if (used == false || oneUse == false)

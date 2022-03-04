@@ -66,6 +66,11 @@ MonoBehaviour:
   spawnPoint: {fileID: 8864528671052764174}
   endPoint: {fileID: 8191680261470394773}
   glimpseObject: {fileID: 7372754561747490872, guid: 04eceb1f868ab6147bd90a7c0a879a77, type: 3}
+  oneUse: 1
+  used: 1
+  canTrigger: 1
+  glimpseSpeed: 100
+  spawnColDwnBase: 0
 --- !u!1 &1477897485878557748
 GameObject:
   m_ObjectHideFlags: 0
