@@ -111,6 +111,12 @@ public class EnemyAI : MonoBehaviour
         idleWait = idleWaitBase;
         lookingDur = lookingDurBase;
 
+<<<<<<< HEAD
+=======
+        rotationSpd = navMeshAgent.angularSpeed;
+
+        sightRange = sightRangeBase;
+>>>>>>> main
         attackCD = 0f;
         attackStartup = attackStartupBase;
         attackDuration = attackDurationBase;
@@ -120,6 +126,7 @@ public class EnemyAI : MonoBehaviour
     private void FixedUpdate()
     {
         //Checks
+<<<<<<< HEAD
         RaycastHit seePlayer;
         Ray lookForPlayer = new Ray(transform.position, toPlayer);
         Physics.Raycast(lookForPlayer, out seePlayer, terrainPlayerLayer);
@@ -128,6 +135,12 @@ public class EnemyAI : MonoBehaviour
             playerInSightRange = (seePlayer.distance < sightRange && seePlayer.transform.gameObject.name == player.transform.GetChild(1).name);
         }
         playerInRange = Physics.Raycast(transform.position, toPlayer, attackRange, playerLayer);
+=======
+        playerInSightRange = Physics.Raycast(transform.position, toPlayer, sightRange, playerLayer);
+        terrainInRange = Physics.Raycast(transform.position, toPlayer, sightRange, groundLayer);
+        playerInRange = Physics.Raycast(transform.position, toPlayer, attackRange, playerLayer);
+        //playerInRange = Physics.CheckSphere(transform.position + transform.forward * attackRange, attackSize / 4, playerLayer);
+>>>>>>> main
         hitPlayer = Physics.CheckSphere(transform.position + transform.forward * attackRange, attackSize, playerLayer);
     }
 
@@ -274,6 +287,7 @@ public class EnemyAI : MonoBehaviour
                     currentAIState = BasicEnemyAIStates.ATTACK;
                     navMeshAgent.SetDestination(transform.position);
                     navMeshAgent.updateRotation = false;
+<<<<<<< HEAD
                 }
                 break;
             case BasicEnemyAIStates.SEARCH:
@@ -328,6 +342,8 @@ public class EnemyAI : MonoBehaviour
                         }
 
                         break;
+=======
+>>>>>>> main
                 }
                 break;
             case BasicEnemyAIStates.ATTACK:
