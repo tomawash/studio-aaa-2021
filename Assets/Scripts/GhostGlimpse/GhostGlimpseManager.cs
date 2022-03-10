@@ -19,22 +19,18 @@ public class GhostGlimpseManager : MonoBehaviour
     [SerializeField]
     private Transform playerTransform;
 
-    private Transform[] glimpseTriggers;
+    [SerializeField]
+    private GhostGlimpseTrigger[] glimpseTriggers;
 
-    private Transform currentlyActiveTrigger = null;
+    private GhostGlimpseTrigger currentlyActiveTrigger = null;
     // Start is called before the first frame update
     void Start()
     {
         glimpseFrequency = glimpseFrequencyBase;
         closestTriggerRefresh = 0f;
 
-        glimpseTriggers = new Transform[transform.childCount];
-        //Initialzing list of children
-        for (int i = 0; i < transform.childCount; i++)
-        {
-            glimpseTriggers[i] = transform.GetChild(i);
-            glimpseTriggers[i].GetComponent<GhostGlimpseTrigger>().used = true;
-        }
+        //Initialize triggers
+        glimpseTriggers = GetComponentsInChildren<GhostGlimpseTrigger>();
     }
 
     // Update is called once per frame
@@ -42,20 +38,21 @@ public class GhostGlimpseManager : MonoBehaviour
     {
         //Activating a glimpse trigger
         glimpseFrequency -= Time.deltaTime;
-        if(glimpseFrequency < 0)
+        if(glimpseFrequency <= 0)
         {
             //updates active trigger after a certain amount of time
             closestTriggerRefresh -= Time.deltaTime;
-            if(closestTriggerRefresh < 0)
+            if(closestTriggerRefresh <= 0)
             {
                 ActivateClosestTrigger();
                 closestTriggerRefresh = closestTriggerRefreshBase;
             }
 
             //If trigger was hit reset the glimpse timer
-            if(currentlyActiveTrigger.GetComponent<GhostGlimpseTrigger>().used == true)
+            if(currentlyActiveTrigger.used == true)
             {
                 //Resetting glimpse timer
+                currentlyActiveTrigger = null;
                 glimpseFrequency = glimpseFrequencyBase + (glimpseFrequencyVariation * Random.value);
                 closestTriggerRefresh = 0;
             }
@@ -63,18 +60,18 @@ public class GhostGlimpseManager : MonoBehaviour
         }
     }
 
-    private Transform ActivateClosestTrigger()
+    private GhostGlimpseTrigger ActivateClosestTrigger()
     {
         //Finds the closest trigger
         float smallestDist = float.MaxValue;
         float currentdist;
-        Transform currentClosestTrigger = null;
+        GhostGlimpseTrigger currentClosestTrigger = null;
 
         for (int i = 0; i < glimpseTriggers.Length; i++)
         {
-            Transform currentTrigger = glimpseTriggers[i];
-            currentdist = (playerTransform.position - currentTrigger.position).magnitude;
-            if (currentdist < smallestDist && currentTrigger.GetComponent<GhostGlimpseTrigger>().canTrigger)
+            GhostGlimpseTrigger currentTrigger = glimpseTriggers[i];
+            currentdist = Vector3.Distance(playerTransform.position, currentTrigger.transform.position);
+            if (currentdist < smallestDist && currentTrigger.canTrigger)
             {
                 //Saving the possibly closest trigger
                 smallestDist = currentdist;
@@ -88,19 +85,17 @@ public class GhostGlimpseManager : MonoBehaviour
             currentlyActiveTrigger = currentClosestTrigger;
 
             //Activating clostest trigger
-            currentlyActiveTrigger.GetComponent<GhostGlimpseTrigger>().used = false;
+            currentlyActiveTrigger.used = false;
         }
 
         if (currentClosestTrigger != currentlyActiveTrigger)
         {
             //Disabiling previous trigger
-            currentlyActiveTrigger.GetComponent<GhostGlimpseTrigger>().used = true;
-
+            currentlyActiveTrigger.used = true;
             //Setting new closest trigger
             currentlyActiveTrigger = currentClosestTrigger;
-
             //Activating clostest trigger
-            currentlyActiveTrigger.GetComponent<GhostGlimpseTrigger>().used = false;
+            currentlyActiveTrigger.used = false;
         }
 
         return currentClosestTrigger;
@@ -111,7 +106,7 @@ public class GhostGlimpseManager : MonoBehaviour
         if (currentlyActiveTrigger != null)
         {
             Gizmos.color = Color.magenta;
-            Gizmos.DrawSphere(currentlyActiveTrigger.position, 1);
+            Gizmos.DrawSphere(currentlyActiveTrigger.transform.position, 1);
         }
     }
 }
