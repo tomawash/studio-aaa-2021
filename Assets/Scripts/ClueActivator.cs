@@ -27,10 +27,14 @@ namespace Assets.Scripts
         {
             if (Beam.enabled && Physics.SphereCast(origin.transform.position, radius, origin.transform.forward, out RaycastHit hit, Beam.range, ~mask))
             {
-                Debug.Log(hit.collider.name);
+                //Debug.Log(hit.collider.name);
                 if (hit.collider.TryGetComponent<BaseClue>(out BaseClue clue))
                 {
                     clue.Activate();
+                }
+                if (hit.collider.TryGetComponent<WeakPoint>(out WeakPoint weakPoint))
+                {
+                    weakPoint.Hit();
                 }
             }
         }
