@@ -6,6 +6,7 @@ using UnityEngine.AI;
 public class EnemyAI : MonoBehaviour
 {
     //Components
+    private Health health;
     private NavMeshAgent navMeshAgent;
     [SerializeField]
     private GameObject player;
@@ -50,13 +51,9 @@ public class EnemyAI : MonoBehaviour
         SEARCHPOINT
     }
 
-    [SerializeField]
     private BasicEnemyAIStates currentAIState;
-    [SerializeField]
     private BasicEnemyAttackStates currentAttackState;
-    [SerializeField]
     private BasicEnemyIdleStates currentIdleState;
-    [SerializeField]
     private BasicEnemySearchStates currentSearchState;
 
     //Attack
@@ -77,6 +74,7 @@ public class EnemyAI : MonoBehaviour
     private float attackRange;
     [SerializeField]
     private float attackSize;
+    private bool hitPlayer = false;
 
     //Searching variables
     [SerializeField]
@@ -96,16 +94,14 @@ public class EnemyAI : MonoBehaviour
     //Collision checks
     private bool playerInSightRange;
     private bool playerInRange;
-    private bool hitPlayer;
+    private bool playerInHitbox;
     private Vector3 toPlayer;
 
     //Rotation
     private float rotationSpd;
 
     //Stunned
-    private bool stunned = false;
     private float stunnedDur = 0f;
-    private float savedSpd;
 
     //Stun Weakpoints
     [SerializeField]
@@ -120,6 +116,13 @@ public class EnemyAI : MonoBehaviour
     private float spd = 2f;
     private float chaseMulti = 1.75f;
 
+    //Damaging variables
+    private float playerDamage;
+
+    ///Variables
+    [SerializeField]
+    private float attackDamage;
+
     //Animation
     private Animator animator;
 
@@ -127,6 +130,7 @@ public class EnemyAI : MonoBehaviour
     void Start()
     {
         //Getting Components
+        health = GetComponent<Health>();
         navMeshAgent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
 
@@ -160,28 +164,32 @@ public class EnemyAI : MonoBehaviour
 
     private void FixedUpdate()
     {
-        //Checks
-        RaycastHit seePlayer;
-        Ray lookForPlayer = new Ray(transform.position, toPlayer);
-        Physics.Raycast(lookForPlayer, out seePlayer, terrainPlayerLayer);
-        if (seePlayer.transform != null)
+        //Calculating sight range
+        toPlayer = player.transform.position - transform.position;
+
+        //checking if player is within sight range
+        Ray lookForPlayer = new Ray(transform.position + Vector3.up*0.25f, toPlayer); //added Vector3.up the origin of ray for better collisions
+        if (Physics.Raycast(lookForPlayer, out RaycastHit hit, terrainPlayerLayer))
         {
-            playerInSightRange = (seePlayer.distance < sightRange && seePlayer.transform.gameObject.name == player.transform.GetChild(1).name);
+            playerInSightRange = (hit.distance < sightRange && hit.transform.gameObject.name == player.transform.GetChild(1).name);
         }
+
+        //if player is within reasonable attack range
         playerInRange = Physics.Raycast(transform.position, toPlayer, attackRange + attackSize/2, playerLayer);
-        hitPlayer = Physics.CheckSphere(transform.position + transform.forward * attackRange, attackSize, playerLayer);
+
+        //if player is within attack hitbox
+        playerInHitbox = Physics.CheckSphere(transform.position + transform.forward * attackRange, attackSize, playerLayer);
     }
 
     // Update is called once per frame
     void Update()
     {
-        //Calculating sight range
-        toPlayer = player.transform.position - transform.position;
 
         
         //Recuding attack cooldown
         attackCD -= Time.deltaTime;
 
+        //Debug.Log(playerInSightRange);
         //Statemachine
         switch (currentAIState)
         {
@@ -381,7 +389,7 @@ public class EnemyAI : MonoBehaviour
                             EnterChase();
                         }
 
-                        if (!hitPlayer)
+                        if (!playerInHitbox)
                         {
                             //rotation
                             Vector2 centerPoint = new Vector2(transform.position.x, transform.position.z);
@@ -412,9 +420,10 @@ public class EnemyAI : MonoBehaviour
                         break;
                     case BasicEnemyAttackStates.ATTACK:
                         attackDuration -= Time.deltaTime;
-                        if (hitPlayer)
+                        if (playerInHitbox && !hitPlayer)
                         {
-                            Debug.Log("HIT!"); //Do something when hitting player
+                            hitPlayer = true;
+                            player.GetComponent<Health>().LoseHealth(attackDamage);
                         }
                         if (attackDuration < 0f)
                         {
@@ -427,6 +436,7 @@ public class EnemyAI : MonoBehaviour
                         attackRecover -= Time.deltaTime;
                         if (attackRecover < 0f)
                         {
+                            hitPlayer = false;
                             currentAttackState = BasicEnemyAttackStates.COOLDOWN;
                             attackRecover = attackRecoverBase;
                         }
@@ -435,27 +445,33 @@ public class EnemyAI : MonoBehaviour
                 break;
             case BasicEnemyAIStates.STUN:
 
-                //Hitting weakpoints
-                if (!AllWeakpointsActive() && damaged == false)
+                //Transition out of stun after animation
+                if (damaged)
                 {
-                    Debug.Log("DAMAGED D:");
+                    //After taking damage animation
+                    if (animator.GetCurrentAnimatorStateInfo(0).normalizedTime > 1)
+                    {
+                        ExitStun();
+                    }
+                }
+
+                //Hitting weakpoints and taking damage
+                if (AllWeakpointsDisabled() && damaged == false)
+                {
+                    animator.SetTrigger("ToTakeDamage");
+                    health.LoseHealth(playerDamage);
                     damaged = true;
                 }
 
-                //Displaying stun duration
-                Debug.DrawRay(transform.position, transform.up * stunnedDur, Color.yellow); 
-
                 //Ending Stun Duration
                 stunnedDur -= Time.deltaTime;
-                if (stunnedDur <= 0)
+                if (stunnedDur <= 0 && !damaged)
                 {
                     ExitStun();
                 }
 
-
                 break;
             case BasicEnemyAIStates.DEAD:
-
                 break;
         }
     }
@@ -466,6 +482,7 @@ public class EnemyAI : MonoBehaviour
         //State and navigation
         currentAIState = BasicEnemyAIStates.IDLE;
         navMeshAgent.speed = spd;
+        navMeshAgent.SetDestination(transform.position);
         
         //Animation
         animator.SetTrigger("ToIdle");
@@ -495,6 +512,7 @@ public class EnemyAI : MonoBehaviour
     {
         //State and navigation
         currentAIState = BasicEnemyAIStates.SEARCH;
+        navMeshAgent.SetDestination(transform.position);
         navMeshAgent.speed = spd;
 
         //Animation
@@ -526,6 +544,7 @@ public class EnemyAI : MonoBehaviour
     {
         //Updating rotation
         navMeshAgent.updateRotation = true;
+        hitPlayer = false;
 
         //Resetting attack timers
         attackStartup = attackStartupBase;
@@ -537,6 +556,8 @@ public class EnemyAI : MonoBehaviour
         //States
         ExitAnyState();
         currentAIState = BasicEnemyAIStates.STUN;
+        navMeshAgent.SetDestination(transform.position);
+        navMeshAgent.speed = 0;
 
         //Weakpoints
         SetWeakpointsActive(true);
@@ -544,9 +565,9 @@ public class EnemyAI : MonoBehaviour
         //Adjusting Variables
         stunnedDur = duration;
         damaged = false;
-        navMeshAgent.speed = 0;
 
         //Animation
+        animator.speed = 1;
         animator.SetTrigger("ToIdle");
     }
     private void ExitStun()
@@ -559,6 +580,9 @@ public class EnemyAI : MonoBehaviour
         //Chaning States
         ExitAnyState();
         currentAIState = BasicEnemyAIStates.DEAD;
+
+        //Animation
+        animator.SetTrigger("ToDie");
     }
 
     //Exit States
@@ -592,7 +616,6 @@ public class EnemyAI : MonoBehaviour
         checkZ = lastSeenToPlayer.x * Mathf.Sin(angleCheck) + lastSeenToPlayer.z * Mathf.Cos(angleCheck);
         return new Vector3(checkX, lastSeenToPlayer.y, checkZ);
     }
-
     //Checking New Path
     private bool CheckNewPath(Vector3 checkAngle)
     {
@@ -605,7 +628,6 @@ public class EnemyAI : MonoBehaviour
         }
         return false;
     }
-
     //Weakpoints
     private void SetWeakpointsActive(bool condition)
     {
@@ -614,11 +636,11 @@ public class EnemyAI : MonoBehaviour
             weakPoints[i].gameObject.SetActive(condition);
         }
     }
-    private bool AllWeakpointsActive()
+    private bool AllWeakpointsDisabled()
     {
         for (int i = 0; i < weakPoints.Length; i++)
         {
-            if(!weakPoints[i].gameObject.activeSelf)
+            if(weakPoints[i].gameObject.activeSelf)
             {
                 return false;
             }
@@ -633,14 +655,18 @@ public class EnemyAI : MonoBehaviour
             EnterStun(duration);
         }
     }
+    //Dying
     public void Die()
     {
         EnterDead();
     }
+    //Setting damage taken
+    public void SetPlayerDamageTaken(float amount)
+    {
+        playerDamage = amount;
+    }
     private void OnDrawGizmos()
     {
-        Gizmos.color = Color.white;
-        Gizmos.DrawRay(new Ray(transform.position, (player.transform.position - transform.position)));
         Gizmos.color = Color.grey;
         Gizmos.DrawWireSphere(transform.position, sightRange);
         Gizmos.color = Color.green;

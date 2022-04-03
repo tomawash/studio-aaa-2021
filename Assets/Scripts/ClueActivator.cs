@@ -13,6 +13,9 @@ namespace Assets.Scripts
         private GameObject origin;
         [SerializeField]
         private LayerMask mask;
+
+        [SerializeField]
+        private float attackDamage;
         // Use this for initialization
         void Start()
         {
@@ -34,7 +37,7 @@ namespace Assets.Scripts
                 }
                 if (hit.collider.TryGetComponent<WeakPoint>(out WeakPoint weakPoint))
                 {
-                    weakPoint.Hit();
+                    weakPoint.Hit(attackDamage);
                 }
             }
         }

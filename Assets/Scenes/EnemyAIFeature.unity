@@ -134,7 +134,7 @@ GameObject:
   - component: {fileID: 41321922}
   - component: {fileID: 41321924}
   - component: {fileID: 41321923}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Beam
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1693,7 +1693,7 @@ GameObject:
   - component: {fileID: 828214702}
   - component: {fileID: 828214701}
   - component: {fileID: 828214700}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: FlashPointLight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2196,7 +2196,7 @@ MonoBehaviour:
     ModeOverride: 0
     LensShift: {x: 0, y: 0}
     GateFit: 2
-    m_SensorSize: {x: 1.7762762, y: 1}
+    m_SensorSize: {x: 1.7773331, y: 1}
   m_Transitions:
     m_BlendHint: 0
     m_InheritPosition: 0
@@ -2876,6 +2876,10 @@ PrefabInstance:
       propertyPath: pushLayers.m_Bits
       value: 2147483647
       objectReference: {fileID: 0}
+    - target: {fileID: 4135013735270702863, guid: c5efc39a8aaf6e64ea40e9ad573e9b47, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 5393215578589016642, guid: c5efc39a8aaf6e64ea40e9ad573e9b47, type: 3}
       propertyPath: m_Layer
       value: 7
@@ -3432,8 +3436,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6014ff08f5246ba4b984bbf91f7435aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerView: {fileID: 449856333}
-  enemyObject: {fileID: 1715104915218471}
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -3456,11 +3458,28 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Beam: {fileID: 41321924}
-  radius: 1
+  radius: 0.5
   origin: {fileID: 41321921}
   mask:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 576
+  attackDamage: 0
+--- !u!114 &1863882448
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1863882434}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87c957ecb035e7b44b8fddf3b31c6bb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
+  onDeathActivated:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!4 &1882739552 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7547578159153741658, guid: aad13fc1544ac0140a5c02f5188ffffe, type: 3}
@@ -3762,6 +3781,45 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 9079025911235137235, guid: 37af6e896e228544aaa1b38cc3400e6a, type: 3}
   m_PrefabInstance: {fileID: 9077350391490129652}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1715104915218473 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 9077350390485464372, guid: 37af6e896e228544aaa1b38cc3400e6a, type: 3}
+  m_PrefabInstance: {fileID: 9077350391490129652}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1715104915218471}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf0ec5da2f293a945b59d51ab74d5ca1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1715104915218477
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1715104915218471}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87c957ecb035e7b44b8fddf3b31c6bb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 20
+  onDeathActivated:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 1715104915218473}
+        m_TargetAssemblyTypeName: EnemyAI, Assembly-CSharp
+        m_MethodName: Die
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!1001 &3028991354967864794
 PrefabInstance:
   m_ObjectHideFlags: 0
