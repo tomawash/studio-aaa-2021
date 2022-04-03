@@ -8,6 +8,7 @@ namespace Assets.Scripts
     {
         public UnityEvent OnClueActivated;
         public bool Activated;
+        public bool SetActiveOnStageStart;
         public virtual void Activate()
         {
             if (!Activated)
