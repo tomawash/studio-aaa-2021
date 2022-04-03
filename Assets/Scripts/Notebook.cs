@@ -5,6 +5,7 @@ using UnityEngine;
 public class Notebook : MonoBehaviour
 {
     public static Notebook instance;
+    public GameObject entryContainer;
     private void Awake()
     {
         if (instance)
@@ -18,9 +19,14 @@ public class Notebook : MonoBehaviour
 
     public void addEntry(NotebookEntrySO entry)
     {
-        NotebookEntry newEntry = Instantiate(entryPrefab, transform);
+        NotebookEntry newEntry = Instantiate(entryPrefab, entryContainer.transform);
         newEntry.title.text = entry.title;
         newEntry.shortDescription.text = entry.shortDescription;
         entries.Add(newEntry);
+    }
+
+    public void OnOpenNotebook()
+    {
+        gameObject.SetActive(gameObject.activeInHierarchy);
     }
 }

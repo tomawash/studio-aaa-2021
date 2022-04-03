@@ -1367,6 +1367,7 @@ MonoBehaviour:
           m_BoolArgument: 1
         m_CallState: 2
   Activated: 0
+  clueNote: {fileID: 0}
 --- !u!1 &913466771
 GameObject:
   m_ObjectHideFlags: 0
@@ -7625,6 +7626,7 @@ GameObject:
   - component: {fileID: 1975819407}
   - component: {fileID: 1975819409}
   - component: {fileID: 1975819408}
+  - component: {fileID: 1975819410}
   m_Layer: 5
   m_Name: Notebook
   m_TagString: Untagged
@@ -7693,6 +7695,20 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1975819406}
   m_CullTransparentMesh: 1
+--- !u!114 &1975819410
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1975819406}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 373cb4fb83eaad1418f4efb130b160c1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  entryContainer: {fileID: 776120436}
+  entryPrefab: {fileID: 931093022709990431, guid: 5c27a491e54d9bb4382f80f08b277666, type: 3}
 --- !u!1 &2003357453
 GameObject:
   m_ObjectHideFlags: 0
