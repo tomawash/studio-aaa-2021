@@ -28,7 +28,9 @@ public class EnemyAI : MonoBehaviour
         IDLE,
         CHASE,
         SEARCH,
-        ATTACK
+        ATTACK,
+        STUN,
+        DEAD
     }
     enum BasicEnemyAttackStates
     {
@@ -176,292 +178,285 @@ public class EnemyAI : MonoBehaviour
         //Calculating sight range
         toPlayer = player.transform.position - transform.position;
 
-        //Stunned
-        if (stunned)
+        
+        //Recuding attack cooldown
+        attackCD -= Time.deltaTime;
+
+        //Statemachine
+        switch (currentAIState)
         {
-            //Ending Stun Duration
-            Debug.DrawRay(transform.position, transform.up * stunnedDur, Color.yellow);
-            stunnedDur -= Time.deltaTime;
-            if(stunnedDur <= 0)
-            {
-                if (savedSpd > spd && animator != null)
+            case BasicEnemyAIStates.IDLE:
+
+                //Patroling between points state machine
+                switch (currentIdleState)
                 {
-                    animator.SetTrigger("ToRun");
+                    case BasicEnemyIdleStates.STILL:
+                        //Standing still
+                        idleWait -= Time.deltaTime;
+                        if (idleWait <= 0f)
+                        {
+                            if (patrolPath != null)
+                            {
+                                //Setting new patrol point and start moving
+                                currentIdleState = BasicEnemyIdleStates.WAYPOINT;
+                                currentPoint = patrolPath.GetChild(patrolIndex);
+                                navMeshAgent.SetDestination(currentPoint.position);
+                                animator.SetTrigger("ToRun");
+                            }
+                            idleWait = idleWaitBase;
+                        }
+                        break;
+                    case BasicEnemyIdleStates.WAYPOINT:
+
+                        //Colliding with waypoints
+                        Collider[] waypointContacts = Physics.OverlapSphere(transform.position, 1f, waypointLayer);
+
+                        for (int i = 0; i < waypointContacts.Length; i++)
+                        {
+                            if (waypointContacts[i].name == currentPoint.name)
+                            {
+                                //Itterating patrol index
+                                patrolIndex++;
+                                if (patrolIndex > patrolPath.childCount - 1)
+                                {
+                                    patrolIndex = 0;
+                                }
+
+                                //Changing states
+                                currentIdleState = BasicEnemyIdleStates.STILL;
+                                animator.SetTrigger("ToIdle");
+
+                                break;
+                            }
+                        }
+                        break;
+                }
+
+                //Player in range chase
+                if (playerInSightRange)
+                {
+                    ExitIdle();
+                    EnterChase();
+                }
+                break;
+            case BasicEnemyAIStates.CHASE:
+
+                if (playerInSightRange)
+                {
+                    //AI Setting and remembering last seen
+                    lastSeen = player.transform.position;
+                    navMeshAgent.SetDestination(lastSeen);
                 }
                 else
                 {
-                    animator.SetTrigger("ToIdle");
-                }
-                SetWeakpointsActive(false);
-                navMeshAgent.speed = savedSpd;
-                stunned = false;
-            }
-
-            //Hitting weakpoints
-            if (!AllWeakpointsActive() && damaged == false)
-            {
-                Debug.Log("DAMAGED D:");
-                damaged = true;
-            }
-        }
-
-        else
-        {
-            //Recuding attack cooldown
-            attackCD -= Time.deltaTime;
-
-            //Statemachine
-            switch (currentAIState)
-            {
-                case BasicEnemyAIStates.IDLE:
-
-                    //Patroling between points state machine
-                    switch (currentIdleState)
+                    //Calculating search points
+                    if (Vector3.Distance(transform.position, lastSeen) < 0.5f)
                     {
-                        case BasicEnemyIdleStates.STILL:
-                            //Standing still
-                            idleWait -= Time.deltaTime;
-                            if (idleWait <= 0f)
-                            {
-                                if (patrolPath != null)
-                                {
-                                    //Setting new patrol point and start moving
-                                    currentIdleState = BasicEnemyIdleStates.WAYPOINT;
-                                    currentPoint = patrolPath.GetChild(patrolIndex);
-                                    navMeshAgent.SetDestination(currentPoint.position);
-                                    animator.SetTrigger("ToRun");
-                                }
-                                idleWait = idleWaitBase;
-                            }
-                            break;
-                        case BasicEnemyIdleStates.WAYPOINT:
+                        bool positiveFound = false;
+                        bool negativeFound = false;
 
-                            //Colliding with waypoints
-                            Collider[] waypointContacts = Physics.OverlapSphere(transform.position, 1f, waypointLayer);
+                        float angleCheck;
+                        Vector3 checkAngle;
 
-                            for (int i = 0; i < waypointContacts.Length; i++)
-                            {
-                                if (waypointContacts[i].name == currentPoint.name)
-                                {
-                                    //Itterating patrol index
-                                    patrolIndex++;
-                                    if (patrolIndex > patrolPath.childCount - 1)
-                                    {
-                                        patrolIndex = 0;
-                                    }
-
-                                    //Changing states
-                                    currentIdleState = BasicEnemyIdleStates.STILL;
-                                    animator.SetTrigger("ToIdle");
-
-                                    break;
-                                }
-                            }
-                            break;
-                    }
-
-                    //Player in range chase
-                    if (playerInSightRange)
-                    {
-                        ExitIdle();
-                        EnterChase();
-                    }
-                    break;
-                case BasicEnemyAIStates.CHASE:
-
-                    if (playerInSightRange)
-                    {
-                        //AI Setting and remembering last seen
-                        lastSeen = player.transform.position;
-                        navMeshAgent.SetDestination(lastSeen);
-                    }
-                    else
-                    {
-                        //Calculating search points
-                        if (Vector3.Distance(transform.position, lastSeen) < 0.5f)
+                        //Finding searchpoints starting from tangent line of toPlayer
+                        for (int i = 90; i >= 0; i--)
                         {
-                            bool positiveFound = false;
-                            bool negativeFound = false;
+                            angleCheck = i * (Mathf.PI / 180f);
 
-                            float angleCheck;
-                            Vector3 checkAngle;
-
-                            //Finding searchpoints starting from tangent line of toPlayer
-                            for (int i = 90; i >= 0; i--)
+                            if (!positiveFound)
                             {
-                                angleCheck = i * (Mathf.PI / 180f);
+                                //New Angle
+                                checkAngle = RotateAngle(angleCheck);
+                                Debug.DrawRay(lastSeen, checkAngle, Color.green, 15f);
 
-                                if (!positiveFound)
+                                //Checking for valid path
+                                if(CheckNewPath(checkAngle))
                                 {
-                                    //New Angle
-                                    checkAngle = RotateAngle(angleCheck);
-                                    Debug.DrawRay(lastSeen, checkAngle, Color.green, 15f);
-
-                                    //Checking for valid path
-                                    if(CheckNewPath(checkAngle))
-                                    {
-                                        searchPoints.Add(transform.position + checkAngle);
-                                        positiveFound = true;
-                                    }
-                                }
-
-                                if (!negativeFound)
-                                {
-                                    //New Angle
-                                    checkAngle = RotateAngle(-angleCheck);
-                                    Debug.DrawRay(lastSeen, checkAngle, Color.red, 15f);
-
-                                    //Checking for valid path
-                                    if (CheckNewPath(checkAngle))
-                                    {
-                                        searchPoints.Add(transform.position + checkAngle);
-                                        negativeFound = true;
-                                    }
+                                    searchPoints.Add(transform.position + checkAngle);
+                                    positiveFound = true;
                                 }
                             }
 
-                            //If there are no valid search points return to idle
-                            if (!positiveFound && !negativeFound)
+                            if (!negativeFound)
                             {
-                                EnterIdle();
-                            }
-                            else
-                            {
-                                EnterSearch();
+                                //New Angle
+                                checkAngle = RotateAngle(-angleCheck);
+                                Debug.DrawRay(lastSeen, checkAngle, Color.red, 15f);
+
+                                //Checking for valid path
+                                if (CheckNewPath(checkAngle))
+                                {
+                                    searchPoints.Add(transform.position + checkAngle);
+                                    negativeFound = true;
+                                }
                             }
                         }
+
+                        //If there are no valid search points return to idle
+                        if (!positiveFound && !negativeFound)
+                        {
+                            EnterIdle();
+                        }
+                        else
+                        {
+                            EnterSearch();
+                        }
                     }
+                }
 
-                    //Attacking if in range
-                    if (playerInRange)
-                    {
-                        EnterAttack();
-                    }
-                    break;
-                case BasicEnemyAIStates.SEARCH:
+                //Attacking if in range
+                if (playerInRange)
+                {
+                    EnterAttack();
+                }
+                break;
+            case BasicEnemyAIStates.SEARCH:
 
-                    //Returning to chase when in range
-                    if (playerInSightRange)
-                    {
-                        ExitSearch();
-                        EnterChase();
-                    }
+                //Returning to chase when in range
+                if (playerInSightRange)
+                {
+                    ExitSearch();
+                    EnterChase();
+                }
 
-                    //Search points state machine
-                    switch (currentSearchState)
-                    {
-                        case BasicEnemySearchStates.LOOK:
-                            lookingDur -= Time.deltaTime;
+                //Search points state machine
+                switch (currentSearchState)
+                {
+                    case BasicEnemySearchStates.LOOK:
+                        lookingDur -= Time.deltaTime;
 
-                            //Rotating to simulate looking
-                            if (lookingDur > lookingDurBase * (1.0f / 2.0f))
+                        //Rotating to simulate looking
+                        if (lookingDur > lookingDurBase * (1.0f / 2.0f))
+                        {
+                            Vector3 rotation = new Vector3(0f, -rotationSpd / 2 * Time.deltaTime, 0f);
+                            transform.Rotate(rotation);
+                        }
+                        else
+                        {
+                            Vector3 rotation = new Vector3(0f, rotationSpd / 2 * Time.deltaTime, 0f);
+                            transform.Rotate(rotation);
+                        }
+
+                        //Changing based on available search points
+                        if (lookingDur <= 0f)
+                        {
+                            searchPointIndex++;
+
+                            //End of search points
+                            if (searchPointIndex > searchPoints.Count - 1)
                             {
-                                Vector3 rotation = new Vector3(0f, -rotationSpd / 2 * Time.deltaTime, 0f);
-                                transform.Rotate(rotation);
+                                ExitSearch();
+                                EnterIdle();
                             }
-                            else
+                            else // Next search point
                             {
-                                Vector3 rotation = new Vector3(0f, rotationSpd / 2 * Time.deltaTime, 0f);
-                                transform.Rotate(rotation);
+                                navMeshAgent.SetDestination(searchPoints[searchPointIndex]);
+                                currentSearchState = BasicEnemySearchStates.SEARCHPOINT;
                             }
+                            lookingDur = lookingDurBase;
+                        }
 
-                            //Changing based on available search points
-                            if (lookingDur <= 0f)
-                            {
-                                searchPointIndex++;
+                        break;
 
-                                //End of search points
-                                if (searchPointIndex > searchPoints.Count - 1)
-                                {
-                                    ExitSearch();
-                                    EnterIdle();
-                                }
-                                else // Next search point
-                                {
-                                    navMeshAgent.SetDestination(searchPoints[searchPointIndex]);
-                                    currentSearchState = BasicEnemySearchStates.SEARCHPOINT;
-                                }
-                                lookingDur = lookingDurBase;
-                            }
+                    case BasicEnemySearchStates.SEARCHPOINT:
 
-                            break;
+                        if (Vector3.Distance(transform.position, searchPoints[searchPointIndex]) < 0.5f)
+                        {
+                            currentSearchState = BasicEnemySearchStates.LOOK;
+                        }
 
-                        case BasicEnemySearchStates.SEARCHPOINT:
+                        break;
+                }
+                break;
+            case BasicEnemyAIStates.ATTACK:
+                //Statemachine for attack cycle
+                switch (currentAttackState)
+                {
+                    case BasicEnemyAttackStates.COOLDOWN:
 
-                            if (Vector3.Distance(transform.position, searchPoints[searchPointIndex]) < 0.5f)
-                            {
-                                currentSearchState = BasicEnemySearchStates.LOOK;
-                            }
+                        //Chaning state to chasing when out of range
+                        if (!playerInRange)
+                        {
+                            ExitAttack();
+                            EnterChase();
+                        }
 
-                            break;
-                    }
-                    break;
-                case BasicEnemyAIStates.ATTACK:
-                    //Statemachine for attack cycle
-                    switch (currentAttackState)
-                    {
-                        case BasicEnemyAttackStates.COOLDOWN:
+                        if (!hitPlayer)
+                        {
+                            //rotation
+                            Vector2 centerPoint = new Vector2(transform.position.x, transform.position.z);
+                            Vector2 facingPoint = new Vector2(transform.forward.x, transform.forward.z);
+                            Vector2 endPoint = centerPoint - new Vector2(player.transform.position.x, player.transform.position.z);
+                            float angleDifference = Vector2.SignedAngle(facingPoint, endPoint);
 
-                            //Chaning state to chasing when out of range
-                            if (!playerInRange)
+                            Vector3 rotation = new Vector3(0f, (rotationSpd * Mathf.Sign(angleDifference)) * Time.deltaTime, 0f);
+                            transform.Rotate(rotation);
+                        }
+                        else
+                        {
+                            if (attackCD < 0f)
                             {
-                                ExitAttack();
-                                EnterChase();
+                                currentAttackState = BasicEnemyAttackStates.STARTUP;
+                                attackCD = attackCDBase;
+                                animator.SetTrigger("ToAttack");
                             }
+                        }
+                        break;
+                    case BasicEnemyAttackStates.STARTUP:
+                        attackStartup -= Time.deltaTime;
+                        if (attackStartup < 0f)
+                        {
+                            currentAttackState = BasicEnemyAttackStates.ATTACK;
+                            attackStartup = attackStartupBase;
+                        }
+                        break;
+                    case BasicEnemyAttackStates.ATTACK:
+                        attackDuration -= Time.deltaTime;
+                        if (hitPlayer)
+                        {
+                            Debug.Log("HIT!"); //Do something when hitting player
+                        }
+                        if (attackDuration < 0f)
+                        {
+                            currentAttackState = BasicEnemyAttackStates.RECOVERY;
+                            attackDuration = attackDurationBase;
+                            animator.SetTrigger("ToIdle");
+                        }
+                        break;
+                    case BasicEnemyAttackStates.RECOVERY:
+                        attackRecover -= Time.deltaTime;
+                        if (attackRecover < 0f)
+                        {
+                            currentAttackState = BasicEnemyAttackStates.COOLDOWN;
+                            attackRecover = attackRecoverBase;
+                        }
+                        break;
+                }
+                break;
+            case BasicEnemyAIStates.STUN:
 
-                            if (!hitPlayer)
-                            {
-                                //rotation
-                                Vector2 centerPoint = new Vector2(transform.position.x, transform.position.z);
-                                Vector2 facingPoint = new Vector2(transform.forward.x, transform.forward.z);
-                                Vector2 endPoint = centerPoint - new Vector2(player.transform.position.x, player.transform.position.z);
-                                float angleDifference = Vector2.SignedAngle(facingPoint, endPoint);
+                //Hitting weakpoints
+                if (!AllWeakpointsActive() && damaged == false)
+                {
+                    Debug.Log("DAMAGED D:");
+                    damaged = true;
+                }
 
-                                Vector3 rotation = new Vector3(0f, (rotationSpd * Mathf.Sign(angleDifference)) * Time.deltaTime, 0f);
-                                transform.Rotate(rotation);
-                            }
-                            else
-                            {
-                                if (attackCD < 0f)
-                                {
-                                    currentAttackState = BasicEnemyAttackStates.STARTUP;
-                                    attackCD = attackCDBase;
-                                    animator.SetTrigger("ToAttack");
-                                }
-                            }
-                            break;
-                        case BasicEnemyAttackStates.STARTUP:
-                            attackStartup -= Time.deltaTime;
-                            if (attackStartup < 0f)
-                            {
-                                currentAttackState = BasicEnemyAttackStates.ATTACK;
-                                attackStartup = attackStartupBase;
-                            }
-                            break;
-                        case BasicEnemyAttackStates.ATTACK:
-                            attackDuration -= Time.deltaTime;
-                            if (hitPlayer)
-                            {
-                                Debug.Log("HIT!"); //Do something when hitting player
-                            }
-                            if (attackDuration < 0f)
-                            {
-                                currentAttackState = BasicEnemyAttackStates.RECOVERY;
-                                attackDuration = attackDurationBase;
-                                animator.SetTrigger("ToIdle");
-                            }
-                            break;
-                        case BasicEnemyAttackStates.RECOVERY:
-                            attackRecover -= Time.deltaTime;
-                            if (attackRecover < 0f)
-                            {
-                                currentAttackState = BasicEnemyAttackStates.COOLDOWN;
-                                attackRecover = attackRecoverBase;
-                            }
-                            break;
-                    }
-                    break;
-            }
+                //Displaying stun duration
+                Debug.DrawRay(transform.position, transform.up * stunnedDur, Color.yellow); 
+
+                //Ending Stun Duration
+                stunnedDur -= Time.deltaTime;
+                if (stunnedDur <= 0)
+                {
+                    ExitStun();
+                }
+
+
+                break;
+            case BasicEnemyAIStates.DEAD:
+
+                break;
         }
     }
 
@@ -537,7 +532,54 @@ public class EnemyAI : MonoBehaviour
         attackDuration = attackDurationBase;
         attackRecover = attackRecoverBase;
     }
+    private void EnterStun(float duration)
+    {
+        //States
+        ExitAnyState();
+        currentAIState = BasicEnemyAIStates.STUN;
 
+        //Weakpoints
+        SetWeakpointsActive(true);
+
+        //Adjusting Variables
+        stunnedDur = duration;
+        damaged = false;
+        navMeshAgent.speed = 0;
+
+        //Animation
+        animator.SetTrigger("ToIdle");
+    }
+    private void ExitStun()
+    {
+        EnterIdle();
+        SetWeakpointsActive(false);
+    }
+    private void EnterDead()
+    {
+        //Chaning States
+        ExitAnyState();
+        currentAIState = BasicEnemyAIStates.DEAD;
+    }
+
+    //Exit States
+    private void ExitAnyState()
+    {
+        switch (currentAIState)
+        {
+            case BasicEnemyAIStates.IDLE:
+                ExitIdle();
+                break;
+            case BasicEnemyAIStates.SEARCH:
+                ExitSearch();
+                break;
+            case BasicEnemyAIStates.ATTACK:
+                ExitAttack();
+                break;
+            case BasicEnemyAIStates.STUN:
+                ExitStun();
+                break;
+        }
+    }
     //Rotation
     private Vector3 RotateAngle(float angleCheck)
     {
@@ -586,15 +628,15 @@ public class EnemyAI : MonoBehaviour
     //Stunned
     public void Stun(float duration)
     {
-        savedSpd = navMeshAgent.speed;
-        navMeshAgent.speed = 0;
-        stunnedDur = duration;
-        stunned = true;
-        animator.SetTrigger("ToIdle");
-        SetWeakpointsActive(true);
-        damaged = false;
+        if (currentAIState != BasicEnemyAIStates.DEAD)
+        {
+            EnterStun(duration);
+        }
     }
-
+    public void Die()
+    {
+        EnterDead();
+    }
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.white;
