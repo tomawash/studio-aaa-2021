@@ -17,4 +17,10 @@ namespace Assets.Scripts
             }
         }
     }
+    public enum ClueStage
+    {
+        stage_1,
+        stage_2,
+        stage_3
+    }
 }
