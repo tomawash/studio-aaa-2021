@@ -3463,7 +3463,7 @@ MonoBehaviour:
   mask:
     serializedVersion: 2
     m_Bits: 576
-  attackDamage: 0
+  attackDamage: 5
 --- !u!114 &1863882448
 MonoBehaviour:
   m_ObjectHideFlags: 0
