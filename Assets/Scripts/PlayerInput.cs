@@ -71,6 +71,15 @@ public partial class @PlayerInput : IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": ""Press(behavior=2)"",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenNotebook"",
+                    ""type"": ""Button"",
+                    ""id"": ""230543f6-4c8b-495f-8c41-c407c8f90ccc"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -260,6 +269,17 @@ public partial class @PlayerInput : IInputActionCollection2, IDisposable
                     ""action"": ""ActivateBeam"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""63fd2f67-dea9-45bf-8291-c99177fc81c4"",
+                    ""path"": ""<Keyboard>/n"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""OpenNotebook"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -321,6 +341,7 @@ public partial class @PlayerInput : IInputActionCollection2, IDisposable
         m_Player_Jump = m_Player.FindAction("Jump", throwIfNotFound: true);
         m_Player_Sprint = m_Player.FindAction("Sprint", throwIfNotFound: true);
         m_Player_ActivateBeam = m_Player.FindAction("ActivateBeam", throwIfNotFound: true);
+        m_Player_OpenNotebook = m_Player.FindAction("OpenNotebook", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -385,6 +406,7 @@ public partial class @PlayerInput : IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Jump;
     private readonly InputAction m_Player_Sprint;
     private readonly InputAction m_Player_ActivateBeam;
+    private readonly InputAction m_Player_OpenNotebook;
     public struct PlayerActions
     {
         private @PlayerInput m_Wrapper;
@@ -394,6 +416,7 @@ public partial class @PlayerInput : IInputActionCollection2, IDisposable
         public InputAction @Jump => m_Wrapper.m_Player_Jump;
         public InputAction @Sprint => m_Wrapper.m_Player_Sprint;
         public InputAction @ActivateBeam => m_Wrapper.m_Player_ActivateBeam;
+        public InputAction @OpenNotebook => m_Wrapper.m_Player_OpenNotebook;
         public InputActionMap Get() { return m_Wrapper.m_Player; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -418,6 +441,9 @@ public partial class @PlayerInput : IInputActionCollection2, IDisposable
                 @ActivateBeam.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnActivateBeam;
                 @ActivateBeam.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnActivateBeam;
                 @ActivateBeam.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnActivateBeam;
+                @OpenNotebook.started -= m_Wrapper.m_PlayerActionsCallbackInterface.OnOpenNotebook;
+                @OpenNotebook.performed -= m_Wrapper.m_PlayerActionsCallbackInterface.OnOpenNotebook;
+                @OpenNotebook.canceled -= m_Wrapper.m_PlayerActionsCallbackInterface.OnOpenNotebook;
             }
             m_Wrapper.m_PlayerActionsCallbackInterface = instance;
             if (instance != null)
@@ -437,6 +463,9 @@ public partial class @PlayerInput : IInputActionCollection2, IDisposable
                 @ActivateBeam.started += instance.OnActivateBeam;
                 @ActivateBeam.performed += instance.OnActivateBeam;
                 @ActivateBeam.canceled += instance.OnActivateBeam;
+                @OpenNotebook.started += instance.OnOpenNotebook;
+                @OpenNotebook.performed += instance.OnOpenNotebook;
+                @OpenNotebook.canceled += instance.OnOpenNotebook;
             }
         }
     }
@@ -484,5 +513,6 @@ public partial class @PlayerInput : IInputActionCollection2, IDisposable
         void OnJump(InputAction.CallbackContext context);
         void OnSprint(InputAction.CallbackContext context);
         void OnActivateBeam(InputAction.CallbackContext context);
+        void OnOpenNotebook(InputAction.CallbackContext context);
     }
 }

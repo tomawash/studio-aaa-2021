@@ -1,15 +1,20 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class Notebook : MonoBehaviour
 {
     public static Notebook instance;
     public GameObject entryContainer;
+    private PlayerInput.PlayerActions input;
     private void Awake()
     {
         if (instance)
             Destroy(instance.gameObject);
+        input = new PlayerInput.PlayerActions();
+        input.Enable();
+        input.OpenNotebook.performed += OnOpenNotebook;
         instance = this;
     }
 
@@ -25,8 +30,8 @@ public class Notebook : MonoBehaviour
         entries.Add(newEntry);
     }
 
-    public void OnOpenNotebook()
+    public void OnOpenNotebook(InputAction.CallbackContext _)
     {
-        gameObject.SetActive(gameObject.activeInHierarchy);
+        gameObject.SetActive(!gameObject.activeInHierarchy);
     }
 }
