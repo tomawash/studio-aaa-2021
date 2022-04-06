@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 public class PlayerFlash : MonoBehaviour
 {
     //Layers
@@ -17,40 +18,65 @@ public class PlayerFlash : MonoBehaviour
     private float flashRange;
     [SerializeField]
     private float stunDuration;
+    [SerializeField]
+    private float flashCooldownBase;
+    private float flashCooldown;
+
+    //UI
+    [SerializeField]
+    private Image flashCooldownBar;
 
     // Start is called before the first frame update
     void Start()
     {
+        //Getting Components
         flashAnimator = flashPointLight.GetComponent<Animator>();
+
+        //Setting timers
+        flashCooldown = flashCooldownBase;
+    }
+
+    private void Update()
+    {
+        //Reducing CD
+        flashCooldown -= Time.deltaTime;
+
+        //UI
+        flashCooldownBar.transform.localScale = new Vector3(1f - Mathf.Max(0f, flashCooldown / flashCooldownBase), 1f, 1f);
     }
 
     public void OnFlash()
     {
-        //Flash Animation
-        flashAnimator.SetTrigger("ToFlash");
-
-        //Checking for enemy
-        RaycastHit[] enemyHit = Physics.SphereCastAll(transform.position, flashRange, Vector3.forward, flashRange);
-        EnemyAI enemyAI = null;
-        for (int i = 0; i < enemyHit.Length; i++)
+        if (flashCooldown <= 0)
         {
-            enemyHit[i].transform.TryGetComponent<EnemyAI>(out enemyAI);
+            //Flash Animation
+            flashAnimator.SetTrigger("ToFlash");
 
-            //Checking for hitting enemy
-            if (enemyAI != null)
+            //Checking for enemy
+            RaycastHit[] enemyHit = Physics.SphereCastAll(transform.position, flashRange, Vector3.forward, flashRange);
+            EnemyAI enemyAI = null;
+            for (int i = 0; i < enemyHit.Length; i++)
             {
-                Vector3 toEnemy = enemyAI.transform.position - transform.position;
+                enemyHit[i].transform.TryGetComponent<EnemyAI>(out enemyAI);
 
-                //If its not obstructed
-                if (!Physics.Raycast(transform.position, toEnemy, toEnemy.magnitude, groundLayer))
+                //Checking for hitting enemy
+                if (enemyAI != null)
                 {
-                    enemyAI.Stun(stunDuration);
+                    Vector3 toEnemy = enemyAI.transform.position - transform.position;
+
+                    //If its not obstructed
+                    if (!Physics.Raycast(transform.position, toEnemy, toEnemy.magnitude, groundLayer))
+                    {
+                        enemyAI.Stun(stunDuration);
+                    }
+
+                    break;
                 }
-
-                break;
             }
-        }
 
+            //Resetting CD
+            flashCooldown = flashCooldownBase;
+        }
     }
 
     private void OnDrawGizmos()

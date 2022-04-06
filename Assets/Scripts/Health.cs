@@ -6,8 +6,8 @@ using UnityEngine.Events;
 public class Health : MonoBehaviour
 {
     [SerializeField]
-    private float maxHealth;
-    private float currentHealth;
+    public float maxHealth;
+    public float currentHealth;
 
     [SerializeField]
     private UnityEvent onDeathActivated;
@@ -21,12 +21,14 @@ public class Health : MonoBehaviour
     }
     public void LoseHealth(float amount)
     {
+        Debug.Log("Lost health:" + gameObject.name);
         //Losing Health
         currentHealth -= amount;
 
         //Dying
         if(currentHealth <= 0)
         {
+            currentHealth = 0;
             OnDeath();
         }
     }
