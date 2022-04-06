@@ -20,7 +20,7 @@ public class EnemyAI : MonoBehaviour
     private int patrolIndex = 0;
 
     [SerializeField]
-    private float idleWaitBase = 10f;
+    private float idleWaitBase = 5f;
     private float idleWait;
 
     //State Machines
@@ -52,43 +52,49 @@ public class EnemyAI : MonoBehaviour
     }
 
     private BasicEnemyAIStates currentAIState;
+    [SerializeField]
     private BasicEnemyAttackStates currentAttackState;
     private BasicEnemyIdleStates currentIdleState;
     private BasicEnemySearchStates currentSearchState;
 
     //Attack
+    [System.Serializable]
+    private struct AttackCycle
+    {
+        public float attackStartupBase;
+        public float attackDurationBase;
+        public float attackRecoverBase;
+    }
     [SerializeField]
-    private float attackCDBase;
-    private float attackCD;
-    [SerializeField]
-    private float attackStartupBase;
-    private float attackStartup;
-    [SerializeField]
-    private float attackRecoverBase;
-    private float attackRecover;
-    [SerializeField]
-    private float attackDurationBase;
-    private float attackDuration;
+    private List<AttackCycle> attackCycles = new List<AttackCycle>();
+    private int currentAttackCycle = 0;
 
     [SerializeField]
-    private float attackRange;
+    private float attackCDBase = 3f;
+    private float attackCD;
+    private float attackStartup;
+    private float attackDuration;
+    private float attackRecover;
+
     [SerializeField]
-    private float attackSize;
+    private float attackRange = 1f;
+    [SerializeField]
+    private float attackSize = 1f;
     private bool hitPlayer = false;
 
     //Searching variables
     [SerializeField]
-    private float lookingDurBase;
+    private float lookingDurBase = 2;
     private float lookingDur;
     private int searchPointIndex = -1;
 
     [SerializeField]
-    private float searchDistance;
+    private float searchDistance = 10f;
     private List<Vector3> searchPoints = new List<Vector3>();
 
     //Seeing Variables
     [SerializeField]
-    private float sightRange;
+    private float sightRange = 10f;
     private Vector3 lastSeen;
 
     //Collision checks
@@ -105,9 +111,9 @@ public class EnemyAI : MonoBehaviour
 
     //Stun Weakpoints
     [SerializeField]
-    public float weakPointSize;
+    public float weakPointSize = 0.3f;
     [SerializeField]
-    public float focusDownDurationBase;
+    public float focusDownDurationBase = 0.5f;
     private WeakPoint[] weakPoints;
     private bool damaged = true;
 
@@ -121,7 +127,7 @@ public class EnemyAI : MonoBehaviour
 
     ///Variables
     [SerializeField]
-    private float attackDamage;
+    private float attackDamage = 5f;
 
     //Animation
     private Animator animator;
@@ -138,7 +144,6 @@ public class EnemyAI : MonoBehaviour
         {
             animator = new Animator();
         }
-
         //Weakpoints
         weakPoints = GetComponentsInChildren<WeakPoint>();
         SetWeakpointsActive(false);
@@ -157,9 +162,9 @@ public class EnemyAI : MonoBehaviour
         lookingDur = lookingDurBase;
 
         attackCD = 0f;
-        attackStartup = attackStartupBase;
-        attackDuration = attackDurationBase;
-        attackRecover = attackRecoverBase;
+        attackStartup = 0f;
+        attackDuration = 0f;
+        attackRecover = 0f;
     }
 
     private void FixedUpdate()
@@ -389,9 +394,9 @@ public class EnemyAI : MonoBehaviour
                             EnterChase();
                         }
 
+                        //rotation if player out of range
                         if (!playerInHitbox)
                         {
-                            //rotation
                             Vector2 centerPoint = new Vector2(transform.position.x, transform.position.z);
                             Vector2 facingPoint = new Vector2(transform.forward.x, transform.forward.z);
                             Vector2 endPoint = centerPoint - new Vector2(player.transform.position.x, player.transform.position.z);
@@ -402,34 +407,45 @@ public class EnemyAI : MonoBehaviour
                         }
                         else
                         {
+                            //Starting Attack
                             if (attackCD < 0f)
                             {
+                                //State Change
                                 currentAttackState = BasicEnemyAttackStates.STARTUP;
+
+                                //Setting timers
                                 attackCD = attackCDBase;
+                                attackStartup = attackCycles[currentAttackCycle].attackStartupBase;
+
+                                //Starting animation
                                 animator.SetTrigger("ToAttack");
                             }
                         }
                         break;
                     case BasicEnemyAttackStates.STARTUP:
-                        attackStartup -= Time.deltaTime;
-                        if (attackStartup < 0f)
+                        if (!animator.IsInTransition(0))
                         {
-                            currentAttackState = BasicEnemyAttackStates.ATTACK;
-                            attackStartup = attackStartupBase;
+                            attackStartup -= Time.deltaTime;
+                            if (attackStartup < 0f)
+                            {
+                                currentAttackState = BasicEnemyAttackStates.ATTACK;
+                                attackDuration = attackCycles[currentAttackCycle].attackDurationBase;
+                            }
                         }
                         break;
                     case BasicEnemyAttackStates.ATTACK:
                         attackDuration -= Time.deltaTime;
+                        if (attackDuration < 0f)
+                        {
+                            currentAttackState = BasicEnemyAttackStates.RECOVERY;   
+                            attackRecover = attackCycles[currentAttackCycle].attackRecoverBase;
+                        }
+
+                        //Hitting the player
                         if (playerInHitbox && !hitPlayer)
                         {
                             hitPlayer = true;
                             player.GetComponent<Health>().LoseHealth(attackDamage);
-                        }
-                        if (attackDuration < 0f)
-                        {
-                            currentAttackState = BasicEnemyAttackStates.RECOVERY;
-                            attackDuration = attackDurationBase;
-                            animator.SetTrigger("ToIdle");
                         }
                         break;
                     case BasicEnemyAttackStates.RECOVERY:
@@ -438,7 +454,20 @@ public class EnemyAI : MonoBehaviour
                         {
                             hitPlayer = false;
                             currentAttackState = BasicEnemyAttackStates.COOLDOWN;
-                            attackRecover = attackRecoverBase;
+
+                            currentAttackCycle++;
+
+                            if(currentAttackCycle >= attackCycles.Count)
+                            {
+                                currentAttackState = BasicEnemyAttackStates.COOLDOWN;
+                                animator.SetTrigger("ToIdle");
+                                currentAttackCycle = 0;
+                            }
+                            else
+                            {
+                                attackStartup = attackCycles[currentAttackCycle].attackStartupBase;
+                                currentAttackState = BasicEnemyAttackStates.STARTUP;
+                            }
                         }
                         break;
                 }
@@ -458,7 +487,6 @@ public class EnemyAI : MonoBehaviour
                 //Hitting weakpoints and taking damage
                 if (AllWeakpointsDisabled() && damaged == false)
                 {
-                    animator.SetTrigger("ToTakeDamage");
                     health.LoseHealth(playerDamage);
                     damaged = true;
                 }
@@ -547,9 +575,10 @@ public class EnemyAI : MonoBehaviour
         hitPlayer = false;
 
         //Resetting attack timers
-        attackStartup = attackStartupBase;
-        attackDuration = attackDurationBase;
-        attackRecover = attackRecoverBase;
+        attackStartup = 0f;
+        attackDuration = 0f;
+        attackRecover = 0f;
+        currentAttackCycle = 0;
     }
     private void EnterStun(float duration)
     {
@@ -568,7 +597,7 @@ public class EnemyAI : MonoBehaviour
 
         //Animation
         animator.speed = 1;
-        animator.SetTrigger("ToIdle");
+        animator.SetTrigger("ToStun");
     }
     private void ExitStun()
     {
@@ -582,7 +611,7 @@ public class EnemyAI : MonoBehaviour
         currentAIState = BasicEnemyAIStates.DEAD;
 
         //Animation
-        animator.SetTrigger("ToDie");
+        //animator.SetTrigger("ToDie");
     }
 
     //Exit States
@@ -667,6 +696,12 @@ public class EnemyAI : MonoBehaviour
     }
     private void OnDrawGizmos()
     {
+        Gizmos.color = Color.cyan;
+        if (attackDuration > 0)
+        {
+            Gizmos.DrawWireSphere(transform.position, 1);
+            Debug.Log(Time.deltaTime);
+        }
         Gizmos.color = Color.grey;
         Gizmos.DrawWireSphere(transform.position, sightRange);
         Gizmos.color = Color.green;
