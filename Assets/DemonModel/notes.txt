@@ -1,0 +1,10 @@
+demon has two textures to em, body and scales. scales is used for any object that starts with scale_. body is used for everything else
+
+demon has several animations on it, the ones that are meant to be used are:
+
+idle (frames 1 - 130) (loop)
+walk (frames 1 - 26) (loop)
+stagger (frames 1 - 75)
+attack (frames 1 - 42)
+
+any other animations are leftover older versions and from testing poses they can be disregarded
