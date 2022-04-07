@@ -82,6 +82,9 @@ public class EnemyAI : MonoBehaviour
     private float attackSize = 1f;
     private bool hitPlayer = false;
 
+    //Damaging variables
+    private float playerDamage;
+
     //Searching variables
     [SerializeField]
     private float lookingDurBase = 2;
@@ -121,9 +124,6 @@ public class EnemyAI : MonoBehaviour
     [SerializeField]
     private float spd = 2f;
     private float chaseMulti = 1.75f;
-
-    //Damaging variables
-    private float playerDamage;
 
     ///Variables
     [SerializeField]
@@ -176,11 +176,11 @@ public class EnemyAI : MonoBehaviour
         Ray lookForPlayer = new Ray(transform.position + Vector3.up*0.25f, toPlayer); //added Vector3.up the origin of ray for better collisions
         if (Physics.Raycast(lookForPlayer, out RaycastHit hit, terrainPlayerLayer))
         {
-            playerInSightRange = (hit.distance < sightRange && hit.transform.gameObject.name == player.transform.GetChild(1).name);
+            playerInSightRange = (hit.distance < sightRange && hit.transform.gameObject.name == player.GetComponentInChildren<CapsuleCollider>().transform.name);
         }
 
         //if player is within reasonable attack range
-        playerInRange = Physics.Raycast(transform.position, toPlayer, attackRange + attackSize/2, playerLayer);
+        playerInRange = Physics.Raycast(transform.position, toPlayer, attackRange + attackSize/1.5f, playerLayer);
 
         //if player is within attack hitbox
         playerInHitbox = Physics.CheckSphere(transform.position + transform.forward * attackRange, attackSize, playerLayer);
@@ -528,7 +528,6 @@ public class EnemyAI : MonoBehaviour
         currentAIState = BasicEnemyAIStates.CHASE;
 
         //Navigation
-        lastSeen = player.transform.position;
         navMeshAgent.SetDestination(lastSeen);
         navMeshAgent.speed = spd * chaseMulti;
 
@@ -601,7 +600,7 @@ public class EnemyAI : MonoBehaviour
     }
     private void ExitStun()
     {
-        EnterIdle();
+        EnterChase();
         SetWeakpointsActive(false);
     }
     private void EnterDead()
@@ -696,12 +695,6 @@ public class EnemyAI : MonoBehaviour
     }
     private void OnDrawGizmos()
     {
-        Gizmos.color = Color.cyan;
-        if (attackDuration > 0)
-        {
-            Gizmos.DrawWireSphere(transform.position, 1);
-            Debug.Log(Time.deltaTime);
-        }
         Gizmos.color = Color.grey;
         Gizmos.DrawWireSphere(transform.position, sightRange);
         Gizmos.color = Color.green;
