@@ -1,0 +1,7 @@
+hand_amulet		frames 1 - 60	loops
+hand_amulet_to_present	frames 1 - 12	transition animation from idle to pointing
+hand_present		frames 1 - 80	loops
+hand_present_to_amulet	frames 1 - 20	transition animation from pointing to idle
+hand_clasp		frames 1 - 90	healing action animation
+
+hand_empty		frames 1 - 80	loops, empty handed idle. not sure if we are using this at all, but if we do use it make sure to make the amulet object invisible during this so it's not just floating around
